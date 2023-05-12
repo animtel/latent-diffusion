@@ -2,7 +2,6 @@ model:
   base_learning_rate: 4.5e-6
   target: ldm.models.autoencoder.AutoencoderKL
   params:
-    ckpt_path: "/app/notebooks/03_ldm_vae/latent-diffusion/logs/2023-05-01T16-33-26_autoencoder_kl_8x8x64/checkpoints/last.ckpt"
     monitor: "val/rec_loss"
     embed_dim: 64
     lossconfig:
@@ -11,15 +10,13 @@ model:
         disc_start: 50001
         kl_weight: 0.000001
         disc_weight: 0.5
-        perceptual_weight: 0
-        disc_in_channels: 48
 
     ddconfig:
       double_z: True
       z_channels: 64
       resolution: 256
-      in_channels: 48
-      out_ch: 48
+      in_channels: 3
+      out_ch: 3
       ch: 128
       ch_mult: [ 1,1,2,2,4,4]  # num_down = len(ch_mult)-1
       num_res_blocks: 2
@@ -33,9 +30,9 @@ data:
     wrap: True
     train:
       target: ldm.data.imagenet.TriplaneDataset
-      # params:
-      #   size: 256
-      #   degradation: pil_nearest
+      params:
+        size: 256
+        degradation: pil_nearest
     # validation:
     #   target: ldm.data.imagenet.ImageNetSRValidation
     #   params:

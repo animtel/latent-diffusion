@@ -148,8 +148,8 @@ class VQModel(pl.LightningModule):
         if optimizer_idx == 0:
             # autoencode
             aeloss, log_dict_ae = self.loss(qloss, x, xrec, optimizer_idx, self.global_step,
-                                            last_layer=self.get_last_layer(), split="train",
-                                            predicted_indices=ind)
+                                            last_layer=self.get_last_layer(), split="train",)
+                                            # predicted_indices=ind)
 
             self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=True)
             return aeloss
@@ -174,14 +174,14 @@ class VQModel(pl.LightningModule):
                                         self.global_step,
                                         last_layer=self.get_last_layer(),
                                         split="val"+suffix,
-                                        predicted_indices=ind
+                                        # predicted_indices=ind
                                         )
 
         discloss, log_dict_disc = self.loss(qloss, x, xrec, 1,
                                             self.global_step,
                                             last_layer=self.get_last_layer(),
                                             split="val"+suffix,
-                                            predicted_indices=ind
+                                            # predicted_indices=ind
                                             )
         rec_loss = log_dict_ae[f"val{suffix}/rec_loss"]
         self.log(f"val{suffix}/rec_loss", rec_loss,
@@ -252,12 +252,19 @@ class VQModel(pl.LightningModule):
                 log["reconstructions_ema"] = xrec_ema
         return log
 
-    def to_rgb(self, x):
-        assert self.image_key == "segmentation"
+    def to_rgb(self, x, feat_size = 16, mult=30):
+        # assert self.image_key == "segmentation"
+        xy_plane = x[:, :feat_size].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+        xz_plane = x[:, feat_size:feat_size*2].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+        yz_plane = x[:, feat_size*2:].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+
+        x = torch.cat([xy_plane, xz_plane, yz_plane], dim=-1)*mult
+
         if not hasattr(self, "colorize"):
             self.register_buffer("colorize", torch.randn(3, x.shape[1], 1, 1).to(x))
         x = F.conv2d(x, weight=self.colorize)
         x = 2.*(x-x.min())/(x.max()-x.min()) - 1.
+
         return x
 
 
@@ -342,11 +349,12 @@ class AutoencoderKL(pl.LightningModule):
         return dec, posterior
 
     def get_input(self, batch, k):
-        x = batch[k]
-        if len(x.shape) == 3:
-            x = x[..., None]
-        x = x.permute(0, 3, 1, 2).to(memory_format=torch.contiguous_format).float()
-        return x
+        # print(batch.shape)
+        # x = batch[k]
+        # if len(x.shape) == 3:
+        #     x = x[..., None]
+        # x = x.permute(0, 3, 1, 2).to(memory_format=torch.contiguous_format).float()
+        return batch
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         inputs = self.get_input(batch, self.image_key)
@@ -414,12 +422,19 @@ class AutoencoderKL(pl.LightningModule):
         log["inputs"] = x
         return log
 
-    def to_rgb(self, x):
-        assert self.image_key == "segmentation"
+    def to_rgb(self, x, feat_size = 16, mult=30):
+        # assert self.image_key == "segmentation"
+        xy_plane = x[:, :feat_size].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+        xz_plane = x[:, feat_size:feat_size*2].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+        yz_plane = x[:, feat_size*2:].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+
+        x = torch.cat([xy_plane, xz_plane, yz_plane], dim=-1)*mult
+
         if not hasattr(self, "colorize"):
             self.register_buffer("colorize", torch.randn(3, x.shape[1], 1, 1).to(x))
         x = F.conv2d(x, weight=self.colorize)
         x = 2.*(x-x.min())/(x.max()-x.min()) - 1.
+
         return x
 
 

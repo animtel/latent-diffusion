@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Python: Debug main.py",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/main.py",
+        "console": "integratedTerminal",
+        "args": [
+          "--base",
+          "models/first_stage_models/vq-f8/config.yaml",
+          "-t",
+          "--gpus",
+          "0,"
+        ],
+        "env": {
+          "CUDA_VISIBLE_DEVICES": "3"
+        }
+      }
+    ]
+}
+  

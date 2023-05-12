@@ -23,6 +23,34 @@ def synset2idx(path_to_yaml="data/index_synset.yaml"):
     return dict((v,k) for k,v in di2s.items())
 
 
+from pathlib import Path
+Path.ls = lambda x: list(x.iterdir())
+
+import torch
+from torch.utils.data import Dataset
+
+class TriplaneDataset(Dataset):
+    def __init__(self, data_dir='/app/notebooks/01_vae/checkpoints/triplanes'):
+        super().__init__()
+        
+        self.files = [i.ls()[0] for i in Path(data_dir).ls()]
+        
+    def __len__(self):
+        """
+        Returns the total number of samples in the dataset.
+        """
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        file_path = self.files[idx]
+        
+        triplane = torch.load(file_path)[0].to(torch.float32).permute(1,2,0) # H, W, C
+
+        return {
+            "image": triplane
+        }
+
+
 class ImageNetBase(Dataset):
     def __init__(self, config=None):
         self.config = config or OmegaConf.create()

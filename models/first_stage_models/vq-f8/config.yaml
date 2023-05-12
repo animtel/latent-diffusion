@@ -2,6 +2,7 @@ model:
   base_learning_rate: 4.5e-06
   target: ldm.models.autoencoder.VQModel
   params:
+    ckpt_path: "/app/notebooks/03_ldm_vae/latent-diffusion/logs/2023-05-09T11-12-56_config/checkpoints/last.ckpt"
     embed_dim: 4
     n_embed: 16384
     monitor: val/rec_loss
@@ -9,8 +10,8 @@ model:
       double_z: false
       z_channels: 4
       resolution: 256
-      in_channels: 3
-      out_ch: 3
+      in_channels: 48
+      out_ch: 48
       ch: 128
       ch_mult:
       - 1
@@ -25,24 +26,19 @@ model:
       target: taming.modules.losses.vqperceptual.VQLPIPSWithDiscriminator
       params:
         disc_conditional: false
-        disc_in_channels: 3
+        disc_in_channels: 48
         disc_num_layers: 2
         disc_start: 1
         disc_weight: 0.6
         codebook_weight: 1.0
+        perceptual_weight: 0.
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 10
-    num_workers: 20
-    wrap: true
+    batch_size: 2
+    num_workers: 4
+    wrap: True
     train:
-      target: ldm.data.openimages.FullOpenImagesTrain
+      target: ldm.data.imagenet.TriplaneDataset
       params:
-        size: 384
-        crop_size: 256
-    validation:
-      target: ldm.data.openimages.FullOpenImagesValidation
-      params:
-        size: 384
-        crop_size: 256
+        data_dir: /data/3ddif/checkpoints/triplanes/

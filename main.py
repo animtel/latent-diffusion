@@ -307,10 +307,16 @@ class ImageLogger(Callback):
         self.log_first_step = log_first_step
 
     @rank_zero_only
-    def _testtube(self, pl_module, images, batch_idx, split):
+    def _testtube(self, pl_module, images, batch_idx, split, feat_size=16):
         for k in images:
             grid = torchvision.utils.make_grid(images[k])
             grid = (grid + 1.0) / 2.0  # -1,1 -> 0,1; c,h,w
+
+            xy_plane = grid[:feat_size].mean(dim=0, keepdim=True).repeat(3, 1, 1)
+            xz_plane = grid[feat_size:feat_size*2].mean(dim=0, keepdim=True).repeat(3, 1, 1)
+            yz_plane = grid[feat_size*2:].mean(dim=0, keepdim=True).repeat(3, 1, 1)
+
+            grid = torch.cat([xy_plane, xz_plane, yz_plane], dim=-1)
 
             tag = f"{split}/{k}"
             pl_module.logger.experiment.add_image(
@@ -323,11 +329,22 @@ class ImageLogger(Callback):
         root = os.path.join(save_dir, "images", split)
         for k in images:
             grid = torchvision.utils.make_grid(images[k], nrow=4)
+
             if self.rescale:
                 grid = (grid + 1.0) / 2.0  # -1,1 -> 0,1; c,h,w
             grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1)
             grid = grid.numpy()
+
+            # feat_size = 16
+            # mult=30
+            # xy_plane = np.tile(grid[..., :feat_size].mean(axis=-1, keepdims=True), (1, 1, 3))
+            # xz_plane = np.tile(grid[..., feat_size:feat_size*2].mean(axis=-1, keepdims=True), (1, 1, 3))
+            # yz_plane = np.tile(grid[..., feat_size*2:].mean(axis=-1, keepdims=True), (1, 1, 3))
+
+            # grid = np.concatenate((xy_plane, xz_plane, yz_plane), axis = 1)*mult
+
             grid = (grid * 255).astype(np.uint8)
+
             filename = "{}_gs-{:06}_e-{:06}_b-{:06}.png".format(
                 k,
                 global_step,
@@ -722,7 +739,8 @@ if __name__ == "__main__":
                 raise
         if not opt.no_test and not trainer.interrupted:
             trainer.test(model, data)
-    except Exception:
+    except Exception as e:
+        print(e)
         if opt.debug and trainer.global_rank == 0:
             try:
                 import pudb as debugger

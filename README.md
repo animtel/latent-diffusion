@@ -1,3 +1,9 @@
+nohup CUDA_VISIBLE_DEVICES=3; python main.py --base configs/autoencoder/autoencoder_kl_8x8x64.yaml -t --gpus 0,1,2 > logs_2.txt &
+
+nohup CUDA_VISIBLE_DEVICES=3; python main.py --base models/first_stage_models/vq-f8/config.yaml -t --gpus 0,1,2 > logs_5.txt &
+
+
+
 # Latent Diffusion Models
 [arXiv](https://arxiv.org/abs/2112.10752) | [BibTeX](#bibtex)
 
