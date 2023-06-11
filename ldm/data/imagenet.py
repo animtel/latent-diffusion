@@ -29,11 +29,30 @@ Path.ls = lambda x: list(x.iterdir())
 import torch
 from torch.utils.data import Dataset
 
+# {name.name:i for i, name in enumerate(Path('/data/3ddif/ShapeNetCore.v2/').ls()) if name.name != 'taxonomy.json'}
+taxonomy_to_intid = {'02818832': 0, '03759954': 1, '03593526': 2, '03085013': 3, '03046257': 4,
+                     '03710193': 5, '04460130': 6, '03467517': 7, '03642806': 8, '04074963': 9,
+                     '03001627': 10,'04256520': 11,'04099429': 12,'04330267': 13,'03325088': 14,
+                     '04530566': 15,'02843684': 16,'04401088': 17,'02773838': 18,'03761084': 19,
+                     '02880940': 20,'03261776': 21,'02946921': 22,'03624134': 23,'04468005': 24,
+                     '04004475': 25,'02808440': 26,'03691459': 27,'02942699': 28,'02871439': 29,
+                     '02828884': 30,'04225987': 32,'03207941': 33,'02992529': 34,'03513137': 35,
+                     '03948459': 36,'03928116': 37,'02691156': 38,'04554684': 39,'03337140': 40,
+                     '03636649': 41,'02876657': 42,'02958343': 43,'03938244': 44,'04090263': 45,
+                     '02747177': 46,'02933112': 47,'03797390': 48,'03790512': 49,'02924116': 50,
+                     '02954340': 51,'03991062': 52,'03211117': 53,'04379243': 54,'02801938': 55}
+
 class TriplaneDataset(Dataset):
-    def __init__(self, data_dir='/app/notebooks/01_vae/checkpoints/triplanes'):
+    def __init__(self, data_dir='/data/3ddif/checkpoints/triplanes/', shapenet_dir = '/data/3ddif/ShapeNetCore.v2/'):
         super().__init__()
         
-        self.files = [i.ls()[0] for i in Path(data_dir).ls()]
+        self.data_dir = Path(data_dir)
+        self.shapenet_dir = Path(shapenet_dir)
+
+        shapenet_meshes = list(self.shapenet_dir.glob('**/*.obj'))
+        self.id_to_class = {i.parent.parent.name: i.parent.parent.parent.name for i in shapenet_meshes}
+        
+        self.files = [i.ls()[0] for i in self.data_dir.ls()]
         
     def __len__(self):
         """
@@ -47,10 +66,11 @@ class TriplaneDataset(Dataset):
         triplane = torch.load(file_path)[0].to(torch.float32).permute(1,2,0) # H, W, C
 
         return {
-            "image": triplane
+            "image": triplane,
+            "class_label": taxonomy_to_intid[self.id_to_class[file_path.parent.stem]],
+            "human_label": self.id_to_class[file_path.parent.stem]
         }
-
-
+    
 class ImageNetBase(Dataset):
     def __init__(self, config=None):
         self.config = config or OmegaConf.create()

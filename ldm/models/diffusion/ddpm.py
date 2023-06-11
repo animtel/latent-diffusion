@@ -112,6 +112,7 @@ class DDPM(pl.LightningModule):
         self.logvar = torch.full(fill_value=logvar_init, size=(self.num_timesteps,))
         if self.learn_logvar:
             self.logvar = nn.Parameter(self.logvar, requires_grad=True)
+        self.logvar = self.logvar.to(self.device)
 
 
     def register_schedule(self, given_betas=None, beta_schedule="linear", timesteps=1000,
@@ -1027,6 +1028,12 @@ class LatentDiffusion(DDPM):
         loss_simple = self.get_loss(model_output, target, mean=False).mean([1, 2, 3])
         loss_dict.update({f'{prefix}/loss_simple': loss_simple.mean()})
 
+        # print("#####################")
+        # print(self.logvar.device)
+        # print(t.device)
+        if self.logvar.device != t.device:
+            self.logvar = self.logvar.to(self.device)
+
         logvar_t = self.logvar[t].to(self.device)
         loss = loss_simple / torch.exp(logvar_t) + logvar_t
         # loss = loss_simple / torch.exp(self.logvar) + self.logvar
@@ -1246,6 +1253,23 @@ class LatentDiffusion(DDPM):
 
         return samples, intermediates
 
+    def b_triplane2rgb(self, x, mult=20):
+        feat_size = x.shape[1] // 3
+        xy_plane = x[:, :feat_size].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+        xz_plane = x[:, feat_size:feat_size*2].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+        yz_plane = x[:, feat_size*2:].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+
+        triplane = torch.cat([xy_plane, xz_plane, yz_plane], dim=-1)*mult
+        return triplane
+
+    def triplane2rgb(self, x, mult=20):
+        feat_size = x.shape[0] // 3
+        xy_plane = x[:feat_size].mean(dim=0, keepdim=True).repeat(1, 3, 1, 1)
+        # xz_plane = x[feat_size:feat_size*2].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+        # yz_plane = x[feat_size*2:].mean(dim=1, keepdim=True).repeat(1, 3, 1, 1)
+
+        triplane = torch.cat([xy_plane], dim=-1)*mult
+        return triplane
 
     @torch.no_grad()
     def log_images(self, batch, N=8, n_row=4, sample=True, ddim_steps=200, ddim_eta=1., return_keys=None,
@@ -1356,6 +1380,12 @@ class LatentDiffusion(DDPM):
                 return log
             else:
                 return {key: log[key] for key in return_keys}
+
+        for key, val in log.items():
+            if val.shape[1] == 48:
+                log[key] = self.b_triplane2rgb(val)
+            if val.shape[0] == 48:
+                log[key] = self.triplane2rgb(val)
         return log
 
     def configure_optimizers(self):
